@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -9,23 +10,128 @@ namespace CookBook.Pages
     public partial class RecipesPage : Page
     {
         private List<Recipes> _recipes = new List<Recipes>();
-        public RecipesPage() { InitializeComponent(); LoadFilters(); ApplyFilters(); }
-        private void LoadFilters(){ cmbCategory.ItemsSource = new List<string>{"Все категории"}.Concat(AppConnect.model01.Categories.Select(x=>x.CategoryName).ToList()); cmbCategory.SelectedIndex=0; cmbSort.ItemsSource=new[]{"Без сортировки","По возрастанию времени","По убыванию времени"}; cmbSort.SelectedIndex=0; }
-        private Recipes[] GetFilteredRecipes(){
-            var query=AppConnect.model01.Recipes.ToList();
-            foreach(var r in query){ var cat=AppConnect.model01.Categories.FirstOrDefault(x=>x.CategoryID==r.CategoryID); r.CategoryDisplay=cat?.CategoryName??""; }
-            if(cmbCategory.SelectedIndex>0) query=query.Where(x=>x.CategoryDisplay==(string)cmbCategory.SelectedItem).ToList();
-            var s=(tbSearch.Text??"").ToLower(); if(!string.IsNullOrWhiteSpace(s)) query=query.Where(x=>(x.RecipeName??"").ToLower().Contains(s)||(x.Description??"").ToLower().Contains(s)||(x.CategoryDisplay??"").ToLower().Contains(s)).ToList();
-            if(cmbSort.SelectedIndex==1) query=query.OrderBy(x=>x.CookingTime).ToList(); else if(cmbSort.SelectedIndex==2) query=query.OrderByDescending(x=>x.CookingTime).ToList();
-            return query.ToArray(); }
-        private void ApplyFilters(){ _recipes=GetFilteredRecipes().ToList(); lvRecipes.ItemsSource=_recipes; icRecipes.ItemsSource=_recipes; tbCount.Text=$"Найдено рецептов: {_recipes.Count}"; }
-        private void Filters_Changed(object s, RoutedEventArgs e)=>ApplyFilters();
-        private void Edit_Click(object s,RoutedEventArgs e){ var r=(s as FrameworkElement)?.Tag as Recipes; if(r!=null) NavigationService?.Navigate(new AddEditRecipePage(r)); }
-        private void Fav_Click(object s,RoutedEventArgs e){ var r=(s as FrameworkElement)?.Tag as Recipes; if(r==null)return; AppConnect.model01.LikeRecipes.Add(new LikeRecipes{ idAuthor=AppConnect.AuthorID,idRecipes=r.RecipeID}); try{AppConnect.model01.SaveChanges();}catch{} }
-        private void BtnAdd_Click(object s,RoutedEventArgs e)=>NavigationService?.Navigate(new AddEditRecipePage(new Recipes()));
-        private void BtnFavPage_Click(object s,RoutedEventArgs e)=>NavigationService?.Navigate(new FavoritesPage());
-        private void lvRecipes_MouseDoubleClick(object s,System.Windows.Input.MouseButtonEventArgs e){ if(lvRecipes.SelectedItem is Recipes r) NavigationService?.Navigate(new AddEditRecipePage(r)); }
-        private void BtnList_Click(object s,RoutedEventArgs e){ lvRecipes.Visibility=Visibility.Visible; svTiles.Visibility=Visibility.Collapsed; }
-        private void BtnTiles_Click(object s,RoutedEventArgs e){ lvRecipes.Visibility=Visibility.Collapsed; svTiles.Visibility=Visibility.Visible; }
+
+        public RecipesPage()
+        {
+            InitializeComponent();
+            LoadFilters();
+            ApplyFilters();
+        }
+
+        private void LoadFilters()
+        {
+            try
+            {
+                cmbCategory.ItemsSource = new List<string> { "Все категории" }
+                    .Concat(AppConnect.model01.Categories.Select(x => x.CategoryName).ToList());
+                cmbCategory.SelectedIndex = 0;
+                cmbSort.ItemsSource = new[] { "Без сортировки", "По возрастанию времени", "По убыванию времени" };
+                cmbSort.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка загрузки фильтров: " + ex.Message);
+            }
+        }
+
+        private Recipes[] GetFilteredRecipes()
+        {
+            try
+            {
+                var query = AppConnect.model01.Recipes.ToList();
+                foreach (var r in query)
+                {
+                    var cat = AppConnect.model01.Categories.FirstOrDefault(x => x.CategoryID == r.CategoryID);
+                    r.CategoryDisplay = cat?.CategoryName ?? "";
+                }
+
+                if (cmbCategory.SelectedIndex > 0)
+                    query = query.Where(x => x.CategoryDisplay == (string)cmbCategory.SelectedItem).ToList();
+
+                var s = (tbSearch.Text ?? "").ToLower();
+                if (!string.IsNullOrWhiteSpace(s))
+                    query = query.Where(x => (x.RecipeName ?? "").ToLower().Contains(s) ||
+                                             (x.Description ?? "").ToLower().Contains(s) ||
+                                             (x.CategoryDisplay ?? "").ToLower().Contains(s)).ToList();
+
+                if (cmbSort.SelectedIndex == 1) query = query.OrderBy(x => x.CookingTime).ToList();
+                else if (cmbSort.SelectedIndex == 2) query = query.OrderByDescending(x => x.CookingTime).ToList();
+
+                return query.ToArray();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка загрузки рецептов: " + ex.Message);
+                return new Recipes[0];
+            }
+        }
+
+        private void ApplyFilters()
+        {
+            _recipes = GetFilteredRecipes().ToList();
+            lvRecipes.ItemsSource = _recipes;
+            icRecipes.ItemsSource = _recipes;
+            tbCount.Text = $"Найдено рецептов: {_recipes.Count}";
+        }
+
+        private void Filters_Changed(object s, RoutedEventArgs e) => ApplyFilters();
+        private void Edit_Click(object s, RoutedEventArgs e) { var r = (s as FrameworkElement)?.Tag as Recipes; if (r != null) NavigationService?.Navigate(new AddEditRecipePage(r)); }
+
+        private void btnLike_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            if (button?.Tag is Recipes selectedRecipe)
+            {
+                try
+                {
+                    var existing = AppConnect.model01.LikeRecipes
+                        .FirstOrDefault(x => x.idAuthor == AppConnect.AuthorID
+                                          && x.idRecipes == selectedRecipe.RecipeID);
+
+                    if (existing == null)
+                    {
+                        var like = new LikeRecipes
+                        {
+                            idRecipes = selectedRecipe.RecipeID,
+                            idAuthor = AppConnect.AuthorID
+                        };
+                        AppConnect.model01.LikeRecipes.Add(like);
+                        AppConnect.model01.SaveChanges();
+                        MessageBox.Show("Рецепт добавлен в избранное!");
+                    }
+                    else
+                    {
+                        MessageBox.Show("Этот рецепт уже в избранном!");
+                    }
+
+                    ApplyFilters();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка добавления в избранное: " + ex.Message);
+                }
+            }
+        }
+
+        private void BtnAdd_Click(object s, RoutedEventArgs e) => NavigationService?.Navigate(new AddEditRecipePage(new Recipes()));
+
+        private void LikeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (NavigationService != null)
+            {
+                NavigationService.Navigate(new PageLike());
+                return;
+            }
+
+            AppFrame.frmMain?.Navigate(new PageLike());
+        }
+
+        private void lvRecipes_MouseDoubleClick(object s, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (lvRecipes.SelectedItem is Recipes r) NavigationService?.Navigate(new AddEditRecipePage(r));
+        }
+
+        private void BtnList_Click(object s, RoutedEventArgs e) { lvRecipes.Visibility = Visibility.Visible; svTiles.Visibility = Visibility.Collapsed; }
+        private void BtnTiles_Click(object s, RoutedEventArgs e) { lvRecipes.Visibility = Visibility.Collapsed; svTiles.Visibility = Visibility.Visible; }
     }
 }

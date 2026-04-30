@@ -1,1 +1,35 @@
-<Page x:Class="CookBook.Pages.CookingStepsPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"><Grid><TextBlock Text="Шаги приготовления (заглушка)"/></Grid></Page>
+<Page x:Class="CookBook.Pages.CookingStepsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Background="#2C3E50">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ListView x:Name="listSteps">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Border Margin="4" Padding="8" Background="#34495E" CornerRadius="5">
+                        <DockPanel>
+                            <Button Content="Удалить шаг" Click="btnDeleteStep_Click" Tag="{Binding}" Style="{StaticResource MagicButtonStyle}" DockPanel.Dock="Right"/>
+                            <StackPanel Margin="0,0,10,0">
+                                <TextBlock Text="{Binding StepNumber, StringFormat=Шаг {0}}" Foreground="White" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding StepDescription}" Foreground="White" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <StackPanel Grid.Row="1" Orientation="Vertical">
+            <TextBox x:Name="txtStep" Height="70" TextWrapping="Wrap" AcceptsReturn="True"/>
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Добавить шаг" Click="btnAddStep_Click" Style="{StaticResource MagicButtonStyle}"/>
+                <Button Content="Назад" Click="btnBack_Click" Style="{StaticResource MagicButtonStyle}"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Page>
